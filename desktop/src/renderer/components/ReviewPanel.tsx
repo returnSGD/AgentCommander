@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLang } from "../i18n/LanguageContext";
 import type { WorkflowProposal, WorkflowReview, AgentDefinition } from "../../shared/types";
 import AgentTerminal from "./AgentTerminal";
 
@@ -10,6 +11,7 @@ interface Props {
 }
 
 export default function ReviewPanel({ proposals, reviews, agents, onRefresh }: Props) {
+  const { t } = useLang();
   const [selectedProposal, setSelectedProposal] = useState<WorkflowProposal | null>(null);
 
   const getReviewsForProposal = (proposalId: string) =>
@@ -34,12 +36,7 @@ export default function ReviewPanel({ proposals, reviews, agents, onRefresh }: P
       ? "Approved: Solution looks correct and complete."
       : "Rejected: Solution needs revision.";
 
-    await window.api.submitReview({
-      reviewId: myReview.id,
-      status: action,
-      summary,
-      agentId: reviewerId,
-    });
+    await window.api.submitReview({ reviewId: myReview.id, status: action, summary, agentId: reviewerId });
     onRefresh();
   };
 
@@ -48,19 +45,26 @@ export default function ReviewPanel({ proposals, reviews, agents, onRefresh }: P
     onRefresh();
   };
 
+  const statusClass = (status: string) => {
+    if (status === "merged") return "status-closed";
+    if (status === "approved") return "status-resolved";
+    if (status === "submitted" || status === "under_review") return "status-open";
+    return "status-in_progress";
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div className="panel">
         <h2 className="panel-title">
-          Proposals ({proposals.length})
-          <span style={{ fontSize: 12, color: "#8b949e", marginLeft: 8 }}>
-            {proposals.filter(p => p.status === "submitted" || p.status === "under_review").length} pending review
+          {t("review.title")} ({proposals.length})
+          <span style={{ fontSize: 12, color: "var(--text-secondary)", marginLeft: 8 }}>
+            {proposals.filter(p => p.status === "submitted" || p.status === "under_review").length} {t("review.pending")}
           </span>
         </h2>
 
         {proposals.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 32, color: "#484f58" }}>
-            No proposals yet. Submit a task to get started.
+          <div style={{ textAlign: "center", padding: 32, color: "var(--text-muted)" }}>
+            {t("review.noProposals")}
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -73,41 +77,35 @@ export default function ReviewPanel({ proposals, reviews, agents, onRefresh }: P
                 <div
                   key={proposal.id}
                   className={`card ${selectedProposal?.id === proposal.id ? "selected" : ""}`}
-                  onClick={() => setSelectedProposal(
-                    selectedProposal?.id === proposal.id ? null : proposal
-                  )}
+                  onClick={() => setSelectedProposal(selectedProposal?.id === proposal.id ? null : proposal)}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div style={{ flex: 1 }}>
                       <div className="card-title">{proposal.title}</div>
                       <div className="card-meta">
-                        <span className={`status-tag status-${proposal.status === "merged" ? "closed" : proposal.status === "approved" ? "resolved" : proposal.status === "submitted" ? "open" : "in_progress"}`}>
-                          {proposal.status}
+                        <span className={`status-tag ${statusClass(proposal.status)}`}>
+                          {t(`status.${proposal.status}`)}
                         </span>
-                        <span>by {getAgentName(proposal.proposedBy)}</span>
+                        <span>{t("review.by")} {getAgentName(proposal.proposedBy)}</span>
                         <span>ID: {proposal.id}</span>
                       </div>
                     </div>
 
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {/* Review progress */}
-                      <div style={{ fontSize: 12, color: "#8b949e" }}>
+                      <div style={{ fontSize: 12, color: "var(--text-secondary)" }}>
                         {proposalReviews.length > 0 ? (
                           <span>
-                            <span style={{ color: "#3fb950" }}>{approvedCount} approved</span>
-                            {rejectedCount > 0 && <span style={{ color: "#f85149" }}>, {rejectedCount} rejected</span>}
-                            <span>, {proposalReviews.length - approvedCount - rejectedCount} pending</span>
+                            <span style={{ color: "var(--accent-green)" }}>{approvedCount} {t("review.approved")}</span>
+                            {rejectedCount > 0 && <span style={{ color: "var(--accent-red)" }}>, {rejectedCount} {t("review.rejected")}</span>}
+                            <span>, {proposalReviews.length - approvedCount - rejectedCount} {t("review.pendingCount")}</span>
                           </span>
-                        ) : "No reviewers"}
+                        ) : t("review.noReviewers")}
                       </div>
 
-                      {/* Merge button */}
                       {proposal.status === "approved" && (
-                        <button
-                          className="btn btn-primary btn-xs"
-                          onClick={(e) => { e.stopPropagation(); handleMerge(proposal.id); }}
-                        >
-                          Merge
+                        <button className="btn btn-primary btn-xs"
+                          onClick={(e) => { e.stopPropagation(); handleMerge(proposal.id); }}>
+                          {t("review.merge")}
                         </button>
                       )}
                     </div>
@@ -119,62 +117,46 @@ export default function ReviewPanel({ proposals, reviews, agents, onRefresh }: P
         )}
       </div>
 
-      {/* Selected Proposal Detail */}
       {selectedProposal && (
         <div className="panel">
           <h3 className="panel-title">{selectedProposal.title}</h3>
           <pre style={{
-            whiteSpace: "pre-wrap",
-            fontSize: 12,
-            color: "#c9d1d9",
-            background: "#0d1117",
-            padding: 16,
-            borderRadius: 6,
-            maxHeight: 300,
-            overflowY: "auto",
-            marginBottom: 12,
+            whiteSpace: "pre-wrap", fontSize: 12, color: "var(--text-primary)",
+            background: "var(--bg-input)", padding: 16, borderRadius: 6,
+            maxHeight: 300, overflowY: "auto", marginBottom: 12,
           }}>
             {selectedProposal.description}
           </pre>
 
-          {/* Reviews for this proposal */}
-          <h4 style={{ fontSize: 13, marginBottom: 8, color: "#8b949e" }}>
-            Reviews ({getReviewsForProposal(selectedProposal.id).length})
+          <h4 style={{ fontSize: 13, marginBottom: 8, color: "var(--text-secondary)" }}>
+            {t("review.reviews")} ({getReviewsForProposal(selectedProposal.id).length})
           </h4>
           {getReviewsForProposal(selectedProposal.id).map(review => (
             <div key={review.id} style={{
-              padding: "8px 12px",
-              background: "#0d1117",
-              borderRadius: 4,
-              marginBottom: 6,
-              fontSize: 12,
-              borderLeft: `3px solid ${review.status === "approved" ? "#3fb950" : review.status === "rejected" ? "#f85149" : "#30363d"}`,
+              padding: "8px 12px", background: "var(--bg-input)", borderRadius: 4, marginBottom: 6, fontSize: 12,
+              borderLeft: `3px solid ${review.status === "approved" ? "var(--accent-green)" : review.status === "rejected" ? "var(--accent-red)" : "var(--border-primary)"}`,
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                <span style={{ fontWeight: 600 }}>{getAgentName(review.reviewerId)}</span>
-                <span className={`status-tag status-${review.status === "approved" ? "open" : "in_progress"}`}>{review.status}</span>
+                <span style={{ fontWeight: 600, color: "var(--text-heading)" }}>{getAgentName(review.reviewerId)}</span>
+                <span className={`status-tag ${review.status === "approved" ? "status-open" : "status-in_progress"}`}>
+                  {t(`status.${review.status}`)}
+                </span>
               </div>
-              {review.summary && <div style={{ color: "#8b949e", whiteSpace: "pre-wrap" }}>{review.summary}</div>}
+              {review.summary && <div style={{ color: "var(--text-secondary)", whiteSpace: "pre-wrap" }}>{review.summary}</div>}
             </div>
           ))}
 
-          {/* Quick actions: human review or AI review */}
           {selectedProposal.status === "submitted" && (
             <div style={{ marginTop: 12, display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <span style={{ fontSize: 12, color: "#8b949e" }}>Quick review by AI:</span>
+              <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("review.quickReview")}</span>
               {reviewerAgents.map(agent => (
-                <button
-                  key={agent.id}
-                  className="btn btn-secondary btn-xs"
+                <button key={agent.id} className="btn btn-secondary btn-xs"
                   onClick={() => handleAIReview(selectedProposal!, agent.id)}
-                  disabled={agent.status === "working"}
-                >
+                  disabled={agent.status === "working"}>
                   {agent.name}
                 </button>
               ))}
-              <span style={{ fontSize: 12, color: "#484f58", marginLeft: 8 }}>
-                or manually approve/reject below
-              </span>
+              <span style={{ fontSize: 12, color: "var(--text-muted)", marginLeft: 8 }}>{t("review.manualHint")}</span>
             </div>
           )}
         </div>

@@ -1,10 +1,12 @@
 import { useState } from "react";
+import { useLang } from "../i18n/LanguageContext";
 
 interface Props {
   onTaskCreated: () => void;
 }
 
 export default function TaskInput({ onTaskCreated }: Props) {
+  const { t } = useLang();
   const [title, setTitle] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -30,9 +32,9 @@ export default function TaskInput({ onTaskCreated }: Props) {
 
   return (
     <div className="panel">
-      <h2 className="panel-title">New Task</h2>
-      <p style={{ fontSize: 12, color: "#8b949e", marginBottom: 10 }}>
-        Describe what you want to build. The Planner agent will decompose it into issues with dependencies.
+      <h2 className="panel-title">{t("task.title")}</h2>
+      <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 10 }}>
+        {t("task.hint")}
       </p>
       <div style={{ display: "flex", gap: 8 }}>
         <input
@@ -40,7 +42,7 @@ export default function TaskInput({ onTaskCreated }: Props) {
           value={title}
           onChange={e => setTitle(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="e.g. Build a REST API for user management with authentication"
+          placeholder={t("task.placeholder")}
           style={{ flex: 1 }}
         />
         <button
@@ -48,7 +50,7 @@ export default function TaskInput({ onTaskCreated }: Props) {
           onClick={handleSubmit}
           disabled={submitting || !title.trim()}
         >
-          {submitting ? "Decomposing..." : "Submit Task"}
+          {submitting ? t("task.decomposing") : t("task.submit")}
         </button>
       </div>
     </div>

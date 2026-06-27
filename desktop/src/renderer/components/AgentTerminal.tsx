@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useLang } from "../i18n/LanguageContext";
 
 interface Props {
   agentId: string;
@@ -6,6 +7,7 @@ interface Props {
 }
 
 export default function AgentTerminal({ agentId, title }: Props) {
+  const { t } = useLang();
   const [lines, setLines] = useState<string[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -30,15 +32,15 @@ export default function AgentTerminal({ agentId, title }: Props) {
   return (
     <div className="terminal-container" style={{ marginTop: title ? 0 : 12 }}>
       <div className="terminal-header">
-        <span>{title || `Agent: ${agentId}`}</span>
-        <span style={{ fontSize: 10, color: "#484f58" }}>{lines.length} lines</span>
+        <span>{title || `${t("agent.pool")}: ${agentId}`}</span>
+        <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{lines.length} lines</span>
       </div>
       <div className="terminal-content" ref={containerRef}>
         {lines.length === 0 ? (
-          <span style={{ color: "#484f58" }}>Waiting for output...</span>
+          <span style={{ color: "var(--text-muted)" }}>{t("agent.waitingOutput")}</span>
         ) : (
           lines.map((line, i) => (
-            <div key={i} style={{ color: line.startsWith("[") ? "#58a6ff" : line.includes("Error") ? "#f85149" : "#c9d1d9" }}>
+            <div key={i} style={{ color: line.startsWith("[") ? "var(--accent-blue)" : line.includes("Error") ? "var(--accent-red)" : "var(--text-primary)" }}>
               {line}
             </div>
           ))

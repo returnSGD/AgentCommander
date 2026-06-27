@@ -17,6 +17,7 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
     },
+    icon: path.join(__dirname, "../../build/icon.png"),
     frame: true,
     backgroundColor: "#0d1117",
   });

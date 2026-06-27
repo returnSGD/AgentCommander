@@ -1,33 +1,192 @@
-# AgentCommander — Git-style Multi-Agent Collaboration for AgentSpace
+# AgentCommander — Git-style Multi-Agent Collaboration
 
-在 [AgentSpace](https://github.com/HKUDS/AgentSpace) 基础上实现的 Git 式多 Agent 协作工作流扩展。
+<p align="center">
+  <img src="agentcommander-logo.svg" alt="AgentCommander Logo" width="180" />
+</p>
 
-## 工作流模型
+A desktop application that implements a **Git-style multi-agent collaboration workflow** — AI agents work together like a real dev team: a Planner decomposes tasks, Developers write solutions, Reviewers check the work, and a Merger integrates approved changes.
+
+Built with **Electron + React + TypeScript + SQLite**.
+
+---
+
+## Features
+
+- **Task Decomposition** — Submit a high-level task; the Planner agent breaks it into structured issues with dependency graphs
+- **Kanban Board** — Issues flow through four columns: Open → In Progress → Resolved → Closed
+- **Agent Pool** — 6 pre-configured AI agents (1 Planner, 2 Developers, 2 Reviewers, 1 Merger) running concurrently
+- **Live Terminals** — Real-time streaming output from every agent
+- **Proposal & Review** — Developers submit solutions as proposals; Reviewers approve/reject; Merger auto-merges when all approve
+- **Dual Theme** — Dark & light themes with CSS variables
+- **Bilingual UI** — 中文 / English toggle
+- **Interactive Tutorial** — 7-step onboarding walkthrough with spotlight highlights
+- **Multi-API Support** — OpenAI, Anthropic, and any OpenAI-compatible endpoint (Ollama, vLLM, etc.)
+
+---
+
+## Screenshots
+
+| Dark Theme | Light Theme |
+|---|---|
+| Dark Kanban board with agent terminals | Light theme with bilingual UI |
+
+> Run the app and explore — the tutorial will guide you through every feature.
+
+---
+
+## Quick Start
+
+### Prerequisites
+
+- **Node.js** ≥ 20
+- **npm** ≥ 9
+
+### Install & Run
+
+```bash
+# Clone
+git clone https://github.com/returnSGD/AgentCommander.git
+cd AgentCommander/desktop
+
+# Install dependencies
+npm install
+
+# Development (Vite HMR + Electron)
+npm run dev
+
+# Production build
+npm run build
+
+# Package into installer (NSIS on Windows, DMG on macOS, AppImage on Linux)
+npm run package
+```
+
+### Configure API
+
+1. Open the app
+2. Go to **Settings** tab
+3. Enter your API URL, key, and model
+4. Supported APIs:
+   - OpenAI: `https://api.openai.com/v1` with key `sk-...`
+   - Anthropic: `https://api.anthropic.com` with key `sk-ant-...`
+   - Self-hosted: any OpenAI-compatible endpoint (Ollama, vLLM, etc.)
+
+### Submit Your First Task
+
+1. Go to **Issue Board** tab
+2. Type a task description, e.g. _"Build a REST API for user management with JWT authentication"_
+3. Click **Submit Task**
+4. Watch the Planner agent decompose it into issues
+5. Assign issues to developer agents — they'll write solutions and submit proposals
+6. Approve proposals to trigger auto-merge
+
+---
+
+## Architecture
+
+```
+desktop/
+├── src/
+│   ├── main/                     # Electron main process
+│   │   ├── index.ts              # BrowserWindow, app lifecycle
+│   │   ├── preload.ts            # contextBridge API
+│   │   ├── ipc-handlers.ts       # IPC channel handlers
+│   │   ├── agent-manager.ts      # Agent lifecycle orchestration
+│   │   ├── workflow-engine.ts    # Decompose → Work → Review → Merge
+│   │   ├── api-client.ts         # OpenAI / Anthropic streaming
+│   │   └── state-db.ts           # SQLite (better-sqlite3) CRUD
+│   ├── renderer/                 # React frontend
+│   │   ├── App.tsx               # Root layout, tabs, providers
+│   │   ├── App.css               # CSS variables (dark + light themes)
+│   │   ├── i18n/                 # 中/EN translations & context
+│   │   ├── theme/                # Dark/light theme context
+│   │   └── components/
+│   │       ├── TaskInput.tsx      # Task submission
+│   │       ├── IssueBoard.tsx     # Kanban + issue detail
+│   │       ├── AgentPool.tsx      # Agent grid + controls
+│   │       ├── AgentTerminal.tsx  # Live output terminal
+│   │       ├── ReviewPanel.tsx    # Proposal review + merge
+│   │       ├── SettingsPanel.tsx  # API configuration
+│   │       └── Tutorial.tsx       # 7-step onboarding
+│   └── shared/
+│       └── types.ts              # Shared TypeScript types
+├── package.json                  # Electron + dependencies + build config
+├── vite.config.ts                # Vite bundler config
+└── tsconfig*.json                # TypeScript configs
+```
+
+### Data Model
+
+```typescript
+Issue → Proposal (PR) → Review × N → Merge
+  ↑          ↑              ↑           ↑
+Planner    Developer     Reviewers    Merger
+```
+
+All state persisted in SQLite (`agent-commander.db`) — settings, issues, proposals, reviews, agents, tasks.
+
+### Agent Roles
+
+| Role | Count | Responsibility |
+|---|---|---|
+| **Planner** | 1 | Decomposes user tasks into structured issues |
+| **Developer** | 2 | Claims issues, generates solutions, submits proposals |
+| **Reviewer** | 2 | Reviews proposals for correctness, quality, and security |
+| **Merger** | 1 | Auto-merges proposals when all reviews approve |
+
+---
+
+## Build & Release
+
+```bash
+cd desktop
+
+# Full build (renderer + main)
+npm run build
+
+# Package into platform installer
+npm run package
+# Output: desktop/release/AgentCommander-1.0.0-setup.exe (Windows)
+#         desktop/release/AgentCommander-1.0.0.dmg (macOS)
+#         desktop/release/AgentCommander-1.0.0.AppImage (Linux)
+```
+
+Build configuration is in `desktop/package.json` under the `"build"` key (electron-builder).
+
+---
+
+## AgentSpace Extension (Legacy)
+
+The original AgentSpace workflow extension code is preserved in this repository. See the sections below for integration details.
+
+<details>
+<summary>Click to expand — AgentSpace Workflow Extension</summary>
+
+### Workflow Model
 
 ```
 Issue → Proposal(PR) → Review × N → Merge/Close
   ↑          ↑              ↑             ↑
 Agent A    Agent B      Agents C,D    Auto-merge
-(提需求)   (提交方案)    (评审)       (所有review通过)
 ```
 
-## 冲突解决 (三层防护)
+### Conflict Resolution (3-layer)
 
-| 层级 | 机制 | 实现 |
+| Layer | Mechanism | Implementation |
 |---|---|---|
-| ① 异步锁 | 资源级互斥 | `workflow_lock` 表 + UNIQUE 约束，带 TTL 自动过期 |
-| ② 同步队列 | FIFO 串行化 | `workflow_operation_queue` 表，优先级排序，`processQueue()` 逐条拿锁执行 |
-| ③ 状态数据库 | 乐观锁版本控制 | `version` 列，`UPDATE ... WHERE version = ?`，冲突时记录到 `workflow_conflict` |
+| ① Async Lock | Resource-level mutual exclusion | `workflow_lock` table + UNIQUE constraint with TTL auto-expiry |
+| ② Sync Queue | FIFO serialization | `workflow_operation_queue` table, priority-sorted, `processQueue()` acquires lock per item |
+| ③ State DB | Optimistic locking via version | `version` column, `UPDATE ... WHERE version = ?`, conflicts logged to `workflow_conflict` |
 
-## 安装
+### Installation
 
 ```bash
-# 1. 复制新增文件
+# 1. Copy new files
 cp -r extension/domain/src/*   AgentSpace/packages/domain/src/
 cp -r extension/db/src/*       AgentSpace/packages/db/src/
 cp -r extension/services/src/* AgentSpace/packages/services/src/
 
-# 2. 覆盖修改文件 (AgentSpace 原有文件 + workflow 集成)
+# 2. Overlay modified files
 cp modified/domain/src/workspace.ts      AgentSpace/packages/domain/src/
 cp modified/domain/src/index.ts          AgentSpace/packages/domain/src/
 cp modified/db/src/types.ts              AgentSpace/packages/db/src/
@@ -35,36 +194,33 @@ cp modified/db/src/postgres-schema.ts    AgentSpace/packages/db/src/
 cp modified/db/src/index.ts              AgentSpace/packages/db/src/
 cp modified/services/src/index.ts        AgentSpace/packages/services/src/
 
-# 3. 安装依赖
+# 3. Install
 cd AgentSpace && npm run setup
 ```
 
-## 快速开始
+### Quick Example
 
 ```typescript
 import { WorkflowOrchestrator } from "@agent-space/services";
 
 const wf = new WorkflowOrchestrator();
 
-// 1. 创建 Issue
 const issue = wf.openIssue({
-  title: "优化搜索性能",
-  description: "延迟需从 2s 降到 200ms",
+  title: "Optimize search performance",
+  description: "Latency needs to go from 2s to 200ms",
   createdBy: "architect-agent",
   priority: "high",
   enqueueTask: true,
 });
 
-// 2. 提交 PR
 const { proposal } = wf.submitProposal({
   issueId: issue.id,
-  title: "引入 Elasticsearch",
-  description: "用 ES 倒排索引替代 SQL LIKE",
+  title: "Introduce Elasticsearch",
+  description: "Replace SQL LIKE with ES inverted index",
   proposedBy: "dev-agent",
   reviewers: ["qa-agent", "security-agent"],
 });
 
-// 3. 评审
 wf.reviewProposal({
   reviewId: "wfr-xxx",
   reviewerId: "qa-agent",
@@ -72,38 +228,13 @@ wf.reviewProposal({
   summary: "LGTM",
   expectedVersion: 1,
 });
-
-// 4. 所有评审通过后自动合并
-// → proposal → merged, issue → closed
+// All reviews approved → auto-merge → issue closed
 ```
 
-## 文件清单
+</details>
 
-### 新增 (10 files)
-```
-extension/
-├── domain/src/git-workflow.ts          # 领域类型定义
-├── db/src/workflow-issues.ts           # Issue CRUD + 乐观锁
-├── db/src/workflow-proposals.ts        # Proposal(PR) CRUD
-├── db/src/workflow-reviews.ts          # Review + Comment CRUD
-├── db/src/workflow-locks.ts            # 异步锁 CRUD + 过期清理
-├── db/src/workflow-conflicts.ts        # 冲突记录 + 操作队列 CRUD
-└── services/src/workflow/
-    ├── async-lock.ts                   # withLock() 自动锁服务
-    ├── conflict-queue.ts               # processQueue() 同步FIFO队列
-    └── engine.ts                       # WorkflowOrchestrator 编排引擎
-```
+---
 
-### 修改 (6 files)
-```
-modified/
-├── domain/src/workspace.ts             # +7 字段在 AgentSpaceState, +11 事件类型
-├── domain/src/index.ts                 # +export git-workflow.ts
-├── db/src/types.ts                     # +13 workflow DB record 类型
-├── db/src/postgres-schema.ts           # +6 张表 + 索引
-├── db/src/index.ts                     # +export 所有新模块
-└── services/src/index.ts               # +export 所有工作流服务
-```
+## License
 
-### 新增数据库表 (6 张，自动迁移)
-`workflow_issue`, `workflow_proposal`, `workflow_review`, `workflow_review_comment`, `workflow_lock`, `workflow_operation_queue`, `workflow_conflict`
+MIT

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useLang } from "../i18n/LanguageContext";
 import type { WorkflowIssue, AgentDefinition } from "../../shared/types";
 import AgentTerminal from "./AgentTerminal";
 
@@ -8,14 +9,15 @@ interface Props {
   onRefresh: () => void;
 }
 
-const COLUMNS = [
-  { status: "open", label: "Open", color: "#3fb950" },
-  { status: "in_progress", label: "In Progress", color: "#d29922" },
-  { status: "resolved", label: "Resolved", color: "#a371f7" },
-  { status: "closed", label: "Closed", color: "#8b949e" },
+const STATUS_KEYS = [
+  { status: "open", labelKey: "issue.open", colorVar: "--accent-green" },
+  { status: "in_progress", labelKey: "issue.inProgress", colorVar: "--accent-yellow" },
+  { status: "resolved", labelKey: "issue.resolved", colorVar: "--accent-purple" },
+  { status: "closed", labelKey: "issue.closed", colorVar: "--text-secondary" },
 ] as const;
 
 export default function IssueBoard({ issues, agents, onRefresh }: Props) {
+  const { t } = useLang();
   const [selectedIssue, setSelectedIssue] = useState<WorkflowIssue | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState<string>("");
 
@@ -32,14 +34,13 @@ export default function IssueBoard({ issues, agents, onRefresh }: Props) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Kanban Board */}
       <div className="kanban">
-        {COLUMNS.map(col => {
+        {STATUS_KEYS.map(col => {
           const items = getIssuesForStatus(col.status);
           return (
             <div key={col.status} className="kanban-col">
-              <div className="kanban-col-header" style={{ color: col.color }}>
-                {col.label} ({items.length})
+              <div className="kanban-col-header" style={{ color: `var(${col.colorVar})` }}>
+                {t(col.labelKey)} ({items.length})
               </div>
               {items.map(issue => (
                 <div
@@ -49,19 +50,19 @@ export default function IssueBoard({ issues, agents, onRefresh }: Props) {
                 >
                   <div className="card-title">{issue.title}</div>
                   <div className="card-meta">
-                    <span className={`priority priority-${issue.priority}`}>{issue.priority}</span>
+                    <span className={`priority priority-${issue.priority}`}>{t(`priority.${issue.priority}`)}</span>
                     {issue.assignee && <span>@{issue.assignee}</span>}
                     {issue.dependsOn.length > 0 && (
-                      <span style={{ color: "#d29922" }}>
-                        blocked by {issue.dependsOn.length}
+                      <span style={{ color: "var(--accent-yellow)" }}>
+                        {t("issue.blockedBy")} {issue.dependsOn.length}
                       </span>
                     )}
                   </div>
                 </div>
               ))}
               {items.length === 0 && (
-                <div style={{ fontSize: 12, color: "#484f58", textAlign: "center", padding: 16 }}>
-                  No issues
+                <div style={{ fontSize: 12, color: "var(--text-muted)", textAlign: "center", padding: 16 }}>
+                  {t("issue.noIssues")}
                 </div>
               )}
             </div>
@@ -69,32 +70,31 @@ export default function IssueBoard({ issues, agents, onRefresh }: Props) {
         })}
       </div>
 
-      {/* Selected Issue Detail */}
       {selectedIssue && (
         <div className="panel">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div style={{ flex: 1 }}>
-              <h3 style={{ fontSize: 16, marginBottom: 8 }}>{selectedIssue.title}</h3>
-              <p style={{ fontSize: 13, color: "#8b949e", marginBottom: 12, whiteSpace: "pre-wrap" }}>
+              <h3 style={{ fontSize: 16, marginBottom: 8, color: "var(--text-heading)" }}>{selectedIssue.title}</h3>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 12, whiteSpace: "pre-wrap" }}>
                 {selectedIssue.description}
               </p>
               <div className="card-meta" style={{ marginBottom: 8 }}>
-                <span className={`priority priority-${selectedIssue.priority}`}>{selectedIssue.priority}</span>
-                <span className={`status-tag status-${selectedIssue.status}`}>{selectedIssue.status}</span>
-                {selectedIssue.assignee && <span>Assignee: {selectedIssue.assignee}</span>}
+                <span className={`priority priority-${selectedIssue.priority}`}>{t(`priority.${selectedIssue.priority}`)}</span>
+                <span className={`status-tag status-${selectedIssue.status}`}>{t(`status.${selectedIssue.status}`)}</span>
+                {selectedIssue.assignee && <span>{t("issue.assignee")}: {selectedIssue.assignee}</span>}
                 <span>ID: {selectedIssue.id}</span>
               </div>
               {selectedIssue.dependsOn.length > 0 && (
-                <div style={{ fontSize: 12, color: "#d29922", marginBottom: 8 }}>
-                  Blocked by: {selectedIssue.dependsOn.map(d => {
+                <div style={{ fontSize: 12, color: "var(--accent-yellow)", marginBottom: 8 }}>
+                  {t("issue.blockedBy")}: {selectedIssue.dependsOn.map(d => {
                     const dep = issues.find(i => i.id === d);
                     return dep ? dep.title : d;
                   }).join(", ")}
                 </div>
               )}
               {selectedIssue.blocks.length > 0 && (
-                <div style={{ fontSize: 12, color: "#58a6ff", marginBottom: 8 }}>
-                  Blocks: {selectedIssue.blocks.map(b => {
+                <div style={{ fontSize: 12, color: "var(--accent-blue)", marginBottom: 8 }}>
+                  {t("issue.blocks")}: {selectedIssue.blocks.map(b => {
                     const blocked = issues.find(i => i.id === b);
                     return blocked ? blocked.title : b;
                   }).join(", ")}
@@ -102,7 +102,6 @@ export default function IssueBoard({ issues, agents, onRefresh }: Props) {
               )}
             </div>
 
-            {/* Assign to Agent */}
             <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 180 }}>
               <select
                 className="input"
@@ -110,7 +109,7 @@ export default function IssueBoard({ issues, agents, onRefresh }: Props) {
                 onChange={e => setSelectedAgentId(e.target.value)}
                 style={{ fontSize: 12 }}
               >
-                <option value="">Select agent...</option>
+                <option value="">{t("issue.selectAgent")}</option>
                 {developerAgents.map(a => (
                   <option key={a.id} value={a.id}>{a.name}</option>
                 ))}
@@ -120,12 +119,11 @@ export default function IssueBoard({ issues, agents, onRefresh }: Props) {
                 onClick={() => handleClaimIssue(selectedIssue)}
                 disabled={!selectedAgentId || selectedIssue.status !== "open"}
               >
-                Assign & Start
+                {t("issue.assignAndStart")}
               </button>
             </div>
           </div>
 
-          {/* Show agent terminal if issue is in progress */}
           {selectedIssue.assignee && selectedIssue.status === "in_progress" && (
             <AgentTerminal agentId={selectedIssue.assignee} />
           )}
