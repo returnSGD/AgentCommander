@@ -1,0 +1,17 @@
+# Exclude the original AgentSpace project (not our code)
+AgentSpace/
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-types/
+
+# Environment
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
