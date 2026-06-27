@@ -1,0 +1,11 @@
+{
+  "name": "agent-commander-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix desktop run dev",
+    "build": "npm --prefix desktop run build",
+    "package": "npm --prefix desktop run package",
+    "setup": "npm --prefix desktop install"
+  }
+}
